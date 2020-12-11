@@ -18,7 +18,6 @@
 
 package org.eclipse.jetty.client;
 
-import org.eclipse.jetty.client.api.Connection;
 import org.eclipse.jetty.util.Callback;
 import org.eclipse.jetty.util.Pool;
 import org.eclipse.jetty.util.annotation.ManagedAttribute;
@@ -37,7 +36,7 @@ public class MultiplexConnectionPool extends AbstractConnectionPool implements C
         this(destination, new Pool<>(Pool.StrategyType.FIRST, maxConnections, cache), requester, maxMultiplex);
     }
 
-    public MultiplexConnectionPool(HttpDestination destination, Pool<Connection> pool, Callback requester, int maxMultiplex)
+    public MultiplexConnectionPool(HttpDestination destination, Pool<ConnectionHolder> pool, Callback requester, int maxMultiplex)
     {
         super(destination, pool, requester);
         setMaxMultiplex(maxMultiplex);
