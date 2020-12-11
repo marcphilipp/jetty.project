@@ -301,6 +301,11 @@ public class Pool<T> implements AutoCloseable, Dumpable
             {
                 LOGGER.ignore(e);
                 size = entries.size();
+                // Size can be 0 when the pool is in the middle of
+                // acquiring a connection while another thread
+                // removes the last one from the pool.
+                if (size == 0)
+                    break;
             }
             index = (index + 1) % size;
         }
@@ -599,8 +604,8 @@ public class Pool<T> implements AutoCloseable, Dumpable
         }
 
         /**
-         * Try to mark the entry as removed.
-         * @return true if the entry has to be removed from the containing pool, false otherwise.
+         * Mark the entry as closed.
+         * @return true if the entry can be removed from the containing pool, false if it is still in use.
          */
         boolean tryRemove()
         {
