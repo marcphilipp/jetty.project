@@ -60,7 +60,7 @@ public abstract class ConnectorTimeoutTest extends HttpServerTestFixture
 {
     protected static final Logger LOG = LoggerFactory.getLogger(ConnectorTimeoutTest.class);
 
-    protected static final int MAX_IDLE_TIME = 2000;
+    protected static final int MAX_IDLE_TIME = 1000;
     private int sleepTime = MAX_IDLE_TIME + MAX_IDLE_TIME / 5;
     private int minimumTestRuntime = MAX_IDLE_TIME - MAX_IDLE_TIME / 5;
     private int maximumTestRuntime = MAX_IDLE_TIME * 10;

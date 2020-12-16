@@ -1,3 +1,5 @@
+.mvn/.gradle-enterprise/
+
 # eclipse
 .classpath
 .project

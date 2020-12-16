@@ -29,7 +29,7 @@
         <artifactId>maven-surefire-plugin</artifactId>
         <configuration>
           <argLine>
-            @{argLine} ${jetty.surefire.argLine} --add-reads org.eclipse.jetty.logging=java.management
+            @{argLine} ${jetty.surefire.argLine}
           </argLine>
         </configuration>
       </plugin>

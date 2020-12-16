@@ -23,7 +23,6 @@
         <configuration>
           <argLine>
             @{argLine} ${jetty.surefire.argLine}
-            --add-modules org.eclipse.jetty.util.ajax
           </argLine>
         </configuration>
       </plugin>

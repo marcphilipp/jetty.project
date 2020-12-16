@@ -21,8 +21,6 @@
         <configuration>
           <argLine>
             @{argLine} ${jetty.surefire.argLine}
-            --add-modules java.security.jgss
-            --add-modules org.eclipse.jetty.jmx
           </argLine>
         </configuration>
       </plugin>

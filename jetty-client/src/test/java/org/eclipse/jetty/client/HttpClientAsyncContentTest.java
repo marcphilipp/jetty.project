@@ -307,7 +307,7 @@ public class HttpClientAsyncContentTest extends AbstractHttpClientServerTest
 
         assertTrue(headersLatch.await(5, TimeUnit.SECONDS));
         // Wait to make sure the demand is really delayed.
-        Thread.sleep(500);
+        Thread.sleep(1000);
         demandRef.get().accept(1);
 
         assertTrue(resultLatch.await(5, TimeUnit.SECONDS));

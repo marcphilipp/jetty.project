@@ -46,7 +46,7 @@
     <unix.socket.tmp></unix.socket.tmp>
     <!-- enable or not TestTracker junit5 extension i.e log message when test method is starting -->
     <jetty.testtracker.log>false</jetty.testtracker.log>
-    <jetty.surefire.argLine>-Dfile.encoding=UTF-8 -Duser.language=en -Duser.region=US -showversion -Xmx4g -Xms2g -Xlog:gc:stderr:time,level,tags</jetty.surefire.argLine>
+    <jetty.surefire.argLine>-Xmx4g -Xms2g -Dfile.encoding=UTF-8 -Duser.language=en -Duser.region=US </jetty.surefire.argLine>
 
     <!-- some maven plugins versions -->
     <maven.surefire.version>3.0.0-M5</maven.surefire.version>
@@ -489,6 +489,44 @@
 
     <pluginManagement>
       <plugins>
+      <plugin>
+      <groupId>com.gradle</groupId>
+      <artifactId>gradle-enterprise-maven-extension</artifactId>
+      <configuration>
+        <gradleEnterprise>
+          <plugins>
+            <plugin>
+              <artifactId>maven-surefire-plugin</artifactId>
+              <inputs>
+                <fileSets>
+                  <fileSet>
+                    <name>test-resources</name>
+                    <paths>
+                      <path>src/main/resources</path>
+                      <path>src/main/config</path>
+                      <path>src/main/other</path>
+                      <path>src/main/webapp</path>
+                      <path>src/test/resources</path>
+                      <path>src/test/webapp</path>
+                      <path>src/test/jar</path>
+                      <path>src/test/taglibjar</path>
+                      <path>pom.xml</path>
+                      <path>../jetty-util/target/classes</path>
+                      <path>target/webapp</path>
+                      <path>target/webapps</path>
+                      <path>target/test-jndi.war</path>
+                      <path>target/test-spec.war</path>
+                      <path>target/test-standard.war</path>
+                      <path>target/test-lib</path>
+                    </paths>
+                  </fileSet>
+                </fileSets>
+              </inputs>
+            </plugin>
+          </plugins>
+        </gradleEnterprise>
+      </configuration>
+    </plugin>
         <plugin>
           <groupId>org.apache.maven.plugins</groupId>
           <artifactId>maven-antrun-plugin</artifactId>
