@@ -501,6 +501,15 @@
                   <ignore>Bnd-LastModified</ignore>
                 </ignoredAttributes>
               </metaInf>
+              <propertiesNormalizations>
+                <propertiesNormalization>
+                  <path>org/eclipse/jetty/version/build.properties</path>
+                  <ignoredProperties>
+                    <ignore>buildNumber</ignore>
+                    <ignore>timestamp</ignore>
+                  </ignoredProperties>
+                </propertiesNormalization>
+              </propertiesNormalizations>
             </runtimeClassPath>
           </normalization>
           <plugins>
