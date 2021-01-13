@@ -496,6 +496,9 @@
         <gradleEnterprise>
           <normalization>
             <runtimeClassPath>
+              <ignoredFiles>
+                <ignoredFile>META-INF/BenchmarkList</ignoredFile>
+              </ignoredFiles>
               <metaInf>
                 <ignoredAttributes>
                   <ignore>Bnd-LastModified</ignore>
