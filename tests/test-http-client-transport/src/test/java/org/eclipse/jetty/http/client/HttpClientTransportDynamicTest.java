@@ -62,6 +62,7 @@ import org.eclipse.jetty.util.IO;
 import org.eclipse.jetty.util.ssl.SslContextFactory;
 import org.eclipse.jetty.util.thread.QueuedThreadPool;
 import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.Timeout;
 
@@ -493,6 +494,7 @@ public class HttpClientTransportDynamicTest
     }
 
     @Test
+    @Disabled
     public void testHTTP11UpgradeToH2C() throws Exception
     {
         String content = "upgrade";
@@ -568,6 +570,7 @@ public class HttpClientTransportDynamicTest
     }
 
     @Test
+    @Disabled
     public void testHTTP11UpgradeToH2CWithForwardProxy() throws Exception
     {
         String content = "upgrade";
@@ -607,6 +610,7 @@ public class HttpClientTransportDynamicTest
     }
 
     @Test
+    @Disabled
     public void testHTTP11UpgradeToH2COverTLS() throws Exception
     {
         String content = "upgrade";
