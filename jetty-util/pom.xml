@@ -52,7 +52,7 @@
         <artifactId>maven-surefire-plugin</artifactId>
         <configuration>
           <systemPropertyVariables>
-            <mavenRepoPath>${settings.localRepository}</mavenRepoPath>
+<!--            <mavenRepoPath>${settings.localRepository}</mavenRepoPath>-->
           </systemPropertyVariables>
         </configuration>
       </plugin>

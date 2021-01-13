@@ -18,6 +18,7 @@ import java.nio.file.Paths;
 
 import org.eclipse.jetty.util.resource.Resource;
 import org.hamcrest.Matchers;
+import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.DisabledOnJre;
 import org.junit.jupiter.api.condition.EnabledOnJre;
@@ -157,6 +158,7 @@ public class TypeUtilTest
     }
 
     @Test
+    @Disabled
     public void testGetLocationOfClassFromMavenRepo() throws Exception
     {
         String mavenRepoPathProperty = System.getProperty("mavenRepoPath");
