@@ -494,6 +494,15 @@
       <artifactId>gradle-enterprise-maven-extension</artifactId>
       <configuration>
         <gradleEnterprise>
+          <normalization>
+            <runtimeClassPath>
+              <metaInf>
+                <ignoredAttributes>
+                  <ignore>Bnd-LastModified</ignore>
+                </ignoredAttributes>
+              </metaInf>
+            </runtimeClassPath>
+          </normalization>
           <plugins>
             <plugin>
               <artifactId>maven-surefire-plugin</artifactId>
