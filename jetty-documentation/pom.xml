@@ -123,7 +123,6 @@
             <CONTRIBGUIDE>../contribution-guide/index.html</CONTRIBGUIDE>
             <MVNCENTRAL>http://central.maven.org/maven2</MVNCENTRAL>
             <VERSION>${project.version}</VERSION>
-            <TIMESTAMP>${maven.build.timestamp}</TIMESTAMP>
           </attributes>
         </configuration>
         <executions>
