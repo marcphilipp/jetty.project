@@ -498,6 +498,7 @@
             <runtimeClassPath>
               <ignoredFiles>
                 <ignoredFile>META-INF/BenchmarkList</ignoredFile>
+                <ignoredFile>WEB-INF/classes/META-INF/MANIFEST.MF</ignoredFile>
               </ignoredFiles>
               <metaInf>
                 <ignoredAttributes>
@@ -533,17 +534,17 @@
                       <path>src/test/taglibjar</path>
                       <path>pom.xml</path>
                       <path>target/webapp</path>
+                    </paths>
+                  </fileSet>
+                  <fileSet>
+                    <name>additional-test-classpath</name>
+                    <paths>
+                      <path>../jetty-util/target/classes</path>
+                      <path>target/test-lib</path>
                       <path>target/webapps</path>
                       <path>target/test-jndi.war</path>
                       <path>target/test-spec.war</path>
                       <path>target/test-standard.war</path>
-                      <path>target/test-lib</path>
-                    </paths>
-                  </fileSet>
-                  <fileSet>
-                    <name>jetty-util-resources</name>
-                    <paths>
-                      <path>../jetty-util/target/classes</path>
                     </paths>
                     <normalization>CLASSPATH</normalization>
                   </fileSet>
