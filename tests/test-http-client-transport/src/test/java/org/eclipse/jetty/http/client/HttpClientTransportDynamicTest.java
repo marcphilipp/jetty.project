@@ -63,6 +63,7 @@ import org.eclipse.jetty.util.ssl.SslContextFactory;
 import org.eclipse.jetty.util.thread.QueuedThreadPool;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.Timeout;
 
 import static org.eclipse.jetty.client.ProxyProtocolClientConnectionFactory.V1;
 import static org.junit.jupiter.api.Assertions.assertArrayEquals;
@@ -70,6 +71,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+@Timeout(30)
 public class HttpClientTransportDynamicTest
 {
     private Server server;
