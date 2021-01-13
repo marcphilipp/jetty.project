@@ -532,7 +532,6 @@
                       <path>src/test/jar</path>
                       <path>src/test/taglibjar</path>
                       <path>pom.xml</path>
-                      <path>../jetty-util/target/classes</path>
                       <path>target/webapp</path>
                       <path>target/webapps</path>
                       <path>target/test-jndi.war</path>
@@ -540,6 +539,13 @@
                       <path>target/test-standard.war</path>
                       <path>target/test-lib</path>
                     </paths>
+                  </fileSet>
+                  <fileSet>
+                    <name>jetty-util-resources</name>
+                    <paths>
+                      <path>../jetty-util/target/classes</path>
+                    </paths>
+                    <normalization>CLASSPATH</normalization>
                   </fileSet>
                 </fileSets>
               </inputs>
