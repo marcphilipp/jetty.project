@@ -133,10 +133,10 @@ public class Origin
             hashCode(),
             asString(),
             getTag(),
-            tmp());
+            tmp2());
     }
 
-    private Protocol tmp()
+    private Protocol tmp2()
     {
         return getProtocol();
     }
