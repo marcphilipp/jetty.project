@@ -13,19 +13,14 @@
 
 package org.eclipse.jetty.proxy;
 
-import java.io.EOFException;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InterruptedIOException;
-import java.io.OutputStream;
 import java.io.PrintWriter;
 import java.net.ConnectException;
 import java.net.HttpCookie;
 import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.StandardOpenOption;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.EnumSet;
@@ -49,7 +44,6 @@ import javax.servlet.FilterChain;
 import javax.servlet.FilterConfig;
 import javax.servlet.ServletException;
 import javax.servlet.ServletInputStream;
-import javax.servlet.ServletOutputStream;
 import javax.servlet.ServletRequest;
 import javax.servlet.ServletResponse;
 import javax.servlet.http.Cookie;
@@ -58,9 +52,7 @@ import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletRequestWrapper;
 import javax.servlet.http.HttpServletResponse;
 
-import org.eclipse.jetty.client.ConnectionPool;
 import org.eclipse.jetty.client.HttpClient;
-import org.eclipse.jetty.client.HttpDestination;
 import org.eclipse.jetty.client.HttpProxy;
 import org.eclipse.jetty.client.api.ContentResponse;
 import org.eclipse.jetty.client.api.Request;
@@ -69,7 +61,6 @@ import org.eclipse.jetty.client.api.Result;
 import org.eclipse.jetty.client.util.AsyncRequestContent;
 import org.eclipse.jetty.client.util.BufferingResponseListener;
 import org.eclipse.jetty.client.util.BytesRequestContent;
-import org.eclipse.jetty.client.util.InputStreamResponseListener;
 import org.eclipse.jetty.http.HttpHeader;
 import org.eclipse.jetty.http.HttpHeaderValue;
 import org.eclipse.jetty.http.HttpMethod;
@@ -98,7 +89,6 @@ import org.junit.jupiter.params.provider.ValueSource;
 
 import static org.eclipse.jetty.http.tools.matchers.HttpFieldsMatchers.containsHeader;
 import static org.hamcrest.MatcherAssert.assertThat;
-import static org.hamcrest.Matchers.containsString;
 import static org.hamcrest.Matchers.equalTo;
 import static org.hamcrest.Matchers.greaterThanOrEqualTo;
 import static org.hamcrest.Matchers.instanceOf;
@@ -108,7 +98,7 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-public class ProxyServletTest
+public class ProxyServlet1Test
 {
     private static final String PROXIED_HEADER = "X-Proxied";
 
@@ -412,69 +402,6 @@ public class ProxyServletTest
 
         assertEquals(200, response.getStatus());
         assertTrue(response.getHeaders().contains(PROXIED_HEADER));
-    }
-
-    @ParameterizedTest
-    @MethodSource("impls")
-    public void testProxyWithBigResponseContentWithSlowReader(Class<? extends ProxyServlet> proxyServletClass) throws Exception
-    {
-        // Create a 6 MiB file
-        final int length = 6 * 1024;
-        Path targetTestsDir = MavenTestingUtils.getTargetTestingDir().toPath();
-        Files.createDirectories(targetTestsDir);
-        final Path temp = Files.createTempFile(targetTestsDir, "test_", null);
-        byte[] kb = new byte[1024];
-        new Random().nextBytes(kb);
-        try (OutputStream output = Files.newOutputStream(temp, StandardOpenOption.CREATE))
-        {
-            for (int i = 0; i < length; ++i)
-            {
-                output.write(kb);
-            }
-        }
-        startServer(new HttpServlet()
-        {
-            @Override
-            protected void doGet(HttpServletRequest request, HttpServletResponse response) throws IOException
-            {
-                try (InputStream input = Files.newInputStream(temp))
-                {
-                    IO.copy(input, response.getOutputStream());
-                }
-            }
-        });
-        startProxy(proxyServletClass);
-        startClient();
-
-        Request request = client.newRequest("localhost", serverConnector.getLocalPort()).path("/proxy/test");
-        final CountDownLatch latch = new CountDownLatch(1);
-        request.send(new BufferingResponseListener(2 * length * 1024)
-        {
-            @Override
-            public void onContent(Response response, ByteBuffer content)
-            {
-                try
-                {
-                    // Slow down the reader
-                    TimeUnit.MILLISECONDS.sleep(5);
-                    super.onContent(response, content);
-                }
-                catch (InterruptedException x)
-                {
-                    response.abort(x);
-                }
-            }
-
-            @Override
-            public void onComplete(Result result)
-            {
-                assertFalse(result.isFailed());
-                assertEquals(200, result.getResponse().getStatus());
-                assertEquals(length * 1024, getContent().length);
-                latch.countDown();
-            }
-        });
-        assertTrue(latch.await(30, TimeUnit.SECONDS));
     }
 
     @ParameterizedTest
@@ -1193,150 +1120,6 @@ public class ProxyServletTest
 
     @ParameterizedTest
     @MethodSource("impls")
-    public void testProxyRequestFailureInTheMiddleOfProxyingSmallContent(Class<? extends ProxyServlet> proxyServletClass) throws Exception
-    {
-        final CountDownLatch chunk1Latch = new CountDownLatch(1);
-        final int chunk1 = 'q';
-        final int chunk2 = 'w';
-        startServer(new HttpServlet()
-        {
-            @Override
-            protected void service(HttpServletRequest request, HttpServletResponse response) throws IOException
-            {
-                ServletOutputStream output = response.getOutputStream();
-                output.write(chunk1);
-                response.flushBuffer();
-
-                // Wait for the client to receive this chunk.
-                await(chunk1Latch, 5000);
-
-                // Send second chunk, must not be received by proxy.
-                output.write(chunk2);
-            }
-
-            private boolean await(CountDownLatch latch, long ms) throws IOException
-            {
-                try
-                {
-                    return latch.await(ms, TimeUnit.MILLISECONDS);
-                }
-                catch (InterruptedException x)
-                {
-                    throw new InterruptedIOException();
-                }
-            }
-        });
-        final long proxyTimeout = 1000;
-        Map<String, String> proxyParams = new HashMap<>();
-        proxyParams.put("timeout", String.valueOf(proxyTimeout));
-        startProxy(proxyServletClass, proxyParams);
-        startClient();
-
-        InputStreamResponseListener listener = new InputStreamResponseListener();
-        int port = serverConnector.getLocalPort();
-        Request request = client.newRequest("localhost", port);
-        request.send(listener);
-
-        // Make the proxy request fail; given the small content, the
-        // proxy-to-client response is not committed yet so it will be reset.
-        TimeUnit.MILLISECONDS.sleep(2 * proxyTimeout);
-
-        Response response = listener.get(5, TimeUnit.SECONDS);
-        assertEquals(504, response.getStatus());
-
-        // Make sure there is error page content, as the proxy-to-client response has been reset.
-        InputStream input = listener.getInputStream();
-        String body = IO.toString(input);
-        assertThat(body, containsString("HTTP ERROR 504"));
-        chunk1Latch.countDown();
-
-        // Result succeeds because a 504 is a valid HTTP response.
-        Result result = listener.await(5, TimeUnit.SECONDS);
-        assertTrue(result.isSucceeded());
-
-        // Make sure the proxy does not receive chunk2.
-        assertEquals(-1, input.read());
-
-        HttpDestination destination = (HttpDestination)client.resolveDestination(request);
-        ConnectionPool connectionPool = destination.getConnectionPool();
-        assertTrue(connectionPool.isEmpty());
-    }
-
-    @ParameterizedTest
-    @MethodSource("impls")
-    public void testProxyRequestFailureInTheMiddleOfProxyingBigContent(Class<? extends ProxyServlet> proxyServletClass) throws Exception
-    {
-        int outputBufferSize = 1024;
-        CountDownLatch chunk1Latch = new CountDownLatch(1);
-        byte[] chunk1 = new byte[outputBufferSize];
-        new Random().nextBytes(chunk1);
-        int chunk2 = 'w';
-        startServer(new HttpServlet()
-        {
-            @Override
-            protected void service(HttpServletRequest request, HttpServletResponse response) throws IOException
-            {
-                ServletOutputStream output = response.getOutputStream();
-                output.write(chunk1);
-                response.flushBuffer();
-
-                // Wait for the client to receive this chunk.
-                await(chunk1Latch, 5000);
-
-                // Send second chunk, must not be received by proxy.
-                output.write(chunk2);
-            }
-
-            private boolean await(CountDownLatch latch, long ms) throws IOException
-            {
-                try
-                {
-                    return latch.await(ms, TimeUnit.MILLISECONDS);
-                }
-                catch (InterruptedException x)
-                {
-                    throw new InterruptedIOException();
-                }
-            }
-        });
-        final long proxyTimeout = 1000;
-        Map<String, String> proxyParams = new HashMap<>();
-        proxyParams.put("timeout", String.valueOf(proxyTimeout));
-        proxyParams.put("outputBufferSize", String.valueOf(outputBufferSize));
-        startProxy(proxyServletClass, proxyParams);
-        startClient();
-
-        InputStreamResponseListener listener = new InputStreamResponseListener();
-        int port = serverConnector.getLocalPort();
-        Request request = client.newRequest("localhost", port);
-        request.send(listener);
-
-        Response response = listener.get(5, TimeUnit.SECONDS);
-        assertEquals(200, response.getStatus());
-
-        InputStream input = listener.getInputStream();
-        for (byte b : chunk1)
-        {
-            assertEquals(b & 0xFF, input.read());
-        }
-
-        TimeUnit.MILLISECONDS.sleep(2 * proxyTimeout);
-
-        chunk1Latch.countDown();
-
-        assertThrows(EOFException.class, () ->
-        {
-            // Make sure the proxy does not receive chunk2.
-            input.read();
-        });
-
-        HttpDestination destination = (HttpDestination)client.resolveDestination(request);
-        ConnectionPool connectionPool = destination.getConnectionPool();
-        assertTrue(connectionPool.isEmpty());
-    }
-
-    @ParameterizedTest
-    @MethodSource("impls")
     public void testResponseHeadersAreNotRemoved(Class<? extends ProxyServlet> proxyServletClass) throws Exception
     {
         startServer(new EmptyHttpServlet());
@@ -1525,113 +1308,6 @@ public class ProxyServletTest
         requestContent.offer(ByteBuffer.wrap(content, chunk1, content.length - chunk1));
         requestContent.close();
 
-        assertTrue(clientLatch.await(5, TimeUnit.SECONDS));
-    }
-
-    @ParameterizedTest
-    @MethodSource("impls")
-    public void testExpect100ContinueRespond100ContinueSomeRequestContentThenFailure(Class<? extends ProxyServlet> proxyServletClass) throws Exception
-    {
-        CountDownLatch serverLatch = new CountDownLatch(1);
-        startServer(new HttpServlet()
-        {
-            @Override
-            protected void service(HttpServletRequest request, HttpServletResponse response) throws IOException
-            {
-                // Send the 100 Continue.
-                ServletInputStream input = request.getInputStream();
-                try
-                {
-                    // Echo the content.
-                    IO.copy(input, response.getOutputStream());
-                }
-                catch (IOException x)
-                {
-                    serverLatch.countDown();
-                }
-            }
-        });
-        startProxy(proxyServletClass);
-        long idleTimeout = 1000;
-        startClient(httpClient -> httpClient.setIdleTimeout(idleTimeout));
-
-        byte[] content = new byte[1024];
-        new Random().nextBytes(content);
-        int chunk1 = content.length / 2;
-        AsyncRequestContent requestContent = new AsyncRequestContent();
-        requestContent.offer(ByteBuffer.wrap(content, 0, chunk1));
-        CountDownLatch clientLatch = new CountDownLatch(1);
-        client.newRequest("localhost", serverConnector.getLocalPort())
-            .headers(headers -> headers.put(HttpHeader.EXPECT, HttpHeaderValue.CONTINUE.asString()))
-            .body(requestContent)
-            .send(result ->
-            {
-                if (result.isFailed())
-                    clientLatch.countDown();
-            });
-
-        // Wait more than the idle timeout to break the connection.
-        Thread.sleep(2 * idleTimeout);
-
-        assertTrue(serverLatch.await(5, TimeUnit.SECONDS));
-        assertTrue(clientLatch.await(5, TimeUnit.SECONDS));
-    }
-
-    @ParameterizedTest
-    @MethodSource("impls")
-    public void testExpect100ContinueRespond417ExpectationFailed(Class<? extends ProxyServlet> proxyServletClass) throws Exception
-    {
-        CountDownLatch serverLatch1 = new CountDownLatch(1);
-        CountDownLatch serverLatch2 = new CountDownLatch(1);
-        startServer(new HttpServlet()
-        {
-            @Override
-            protected void service(HttpServletRequest request, HttpServletResponse response) throws IOException
-            {
-                serverLatch1.countDown();
-
-                try
-                {
-                    serverLatch2.await(5, TimeUnit.SECONDS);
-                }
-                catch (Throwable x)
-                {
-                    throw new InterruptedIOException();
-                }
-
-                // Send the 417 Expectation Failed.
-                response.setStatus(HttpStatus.EXPECTATION_FAILED_417);
-            }
-        });
-        startProxy(proxyServletClass);
-        startClient();
-
-        byte[] content = new byte[1024];
-        CountDownLatch contentLatch = new CountDownLatch(1);
-        CountDownLatch clientLatch = new CountDownLatch(1);
-        client.newRequest("localhost", serverConnector.getLocalPort())
-            .headers(headers -> headers.put(HttpHeader.EXPECT, HttpHeaderValue.CONTINUE.asString()))
-            .body(new BytesRequestContent(content))
-            .onRequestContent((request, buffer) -> contentLatch.countDown())
-            .send(result ->
-            {
-                if (result.isFailed())
-                {
-                    if (result.getResponse().getStatus() == HttpStatus.EXPECTATION_FAILED_417)
-                        clientLatch.countDown();
-                }
-            });
-
-        // Wait until we arrive on the server.
-        assertTrue(serverLatch1.await(5, TimeUnit.SECONDS));
-        // The client should not send the content yet.
-        assertFalse(contentLatch.await(1, TimeUnit.SECONDS));
-
-        // Make the server send the 417 Expectation Failed.
-        serverLatch2.countDown();
-
-        // The client should not send the content.
-        assertFalse(contentLatch.await(1, TimeUnit.SECONDS));
         assertTrue(clientLatch.await(5, TimeUnit.SECONDS));
     }
 }

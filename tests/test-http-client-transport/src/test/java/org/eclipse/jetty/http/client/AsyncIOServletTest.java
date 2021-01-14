@@ -31,7 +31,6 @@ import java.util.concurrent.LinkedBlockingDeque;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
-import java.util.concurrent.atomic.AtomicReference;
 import java.util.zip.GZIPOutputStream;
 import javax.servlet.AsyncContext;
 import javax.servlet.DispatcherType;
@@ -61,17 +60,13 @@ import org.eclipse.jetty.http2.api.Session;
 import org.eclipse.jetty.http2.client.http.HttpConnectionOverHTTP2;
 import org.eclipse.jetty.io.Connection;
 import org.eclipse.jetty.logging.StacklessLogging;
-import org.eclipse.jetty.server.Handler;
 import org.eclipse.jetty.server.HttpChannel;
 import org.eclipse.jetty.server.HttpInput;
 import org.eclipse.jetty.server.HttpInput.Content;
 import org.eclipse.jetty.server.Request;
-import org.eclipse.jetty.server.handler.ContextHandler;
-import org.eclipse.jetty.server.handler.ContextHandler.Context;
 import org.eclipse.jetty.server.handler.gzip.GzipHttpInputInterceptor;
 import org.eclipse.jetty.util.BufferUtil;
 import org.eclipse.jetty.util.FuturePromise;
-import org.eclipse.jetty.util.compression.CompressionPool;
 import org.eclipse.jetty.util.compression.InflaterPool;
 import org.hamcrest.Matchers;
 import org.junit.jupiter.api.Assumptions;
@@ -92,20 +87,12 @@ import static org.hamcrest.Matchers.instanceOf;
 import static org.hamcrest.Matchers.is;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
-import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assertions.fail;
 
-public class AsyncIOServletTest extends AbstractTest<AsyncIOServletTest.AsyncTransportScenario>
+public class AsyncIOServletTest extends AbstractAsyncIOServletTest
 {
-    @Override
-    public void init(Transport transport) throws IOException
-    {
-        // Skip FCGI for now, not much interested in its server-side behavior.
-        Assumptions.assumeTrue(transport != FCGI);
-        setScenario(new AsyncTransportScenario(transport));
-    }
 
     private void sleep(long ms)
     {
@@ -1355,81 +1342,6 @@ public class AsyncIOServletTest extends AbstractTest<AsyncIOServletTest.AsyncTra
 
     @ParameterizedTest
     @ArgumentsSource(TransportProvider.class)
-    public void testAsyncEcho(Transport transport) throws Exception
-    {
-        init(transport);
-        scenario.start(new HttpServlet()
-        {
-            @Override
-            protected void service(HttpServletRequest request, HttpServletResponse response) throws IOException
-            {
-                System.err.println("Service " + request);
-
-                AsyncContext asyncContext = request.startAsync();
-                ServletInputStream input = request.getInputStream();
-                input.setReadListener(new ReadListener()
-                {
-                    @Override
-                    public void onDataAvailable() throws IOException
-                    {
-                        while (input.isReady())
-                        {
-                            int b = input.read();
-                            if (b >= 0)
-                            {
-                                // System.err.printf("0x%2x %s %n", b, Character.isISOControl(b)?"?":(""+(char)b));
-                                response.getOutputStream().write(b);
-                            }
-                            else
-                                return;
-                        }
-                    }
-
-                    @Override
-                    public void onAllDataRead() throws IOException
-                    {
-                        asyncContext.complete();
-                    }
-
-                    @Override
-                    public void onError(Throwable x)
-                    {
-                    }
-                });
-            }
-        });
-
-        AsyncRequestContent contentProvider = new AsyncRequestContent();
-        CountDownLatch clientLatch = new CountDownLatch(1);
-
-        AtomicReference<Result> resultRef = new AtomicReference<>();
-        scenario.client.newRequest(scenario.newURI())
-            .method(HttpMethod.POST)
-            .path(scenario.servletPath)
-            .body(contentProvider)
-            .send(new BufferingResponseListener(16 * 1024 * 1024)
-            {
-                @Override
-                public void onComplete(Result result)
-                {
-                    resultRef.set(result);
-                    clientLatch.countDown();
-                }
-            });
-
-        for (int i = 0; i < 1_000_000; i++)
-        {
-            contentProvider.offer(BufferUtil.toBuffer("S" + i));
-        }
-        contentProvider.close();
-
-        assertTrue(clientLatch.await(30, TimeUnit.SECONDS));
-        assertThat(resultRef.get().isSucceeded(), Matchers.is(true));
-        assertThat(resultRef.get().getResponse().getStatus(), Matchers.equalTo(HttpStatus.OK_200));
-    }
-
-    @ParameterizedTest
-    @ArgumentsSource(TransportProvider.class)
     public void testAsyncInterceptedTwice(Transport transport) throws Exception
     {
         init(transport);
@@ -1797,62 +1709,6 @@ public class AsyncIOServletTest extends AbstractTest<AsyncIOServletTest.AsyncTra
         {
             response.setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
             asyncContext.complete();
-        }
-    }
-
-    public static class AsyncTransportScenario extends TransportScenario
-    {
-        public static final ThreadLocal<RuntimeException> scope = new ThreadLocal<>();
-
-        public AsyncTransportScenario(Transport transport) throws IOException
-        {
-            super(transport);
-        }
-
-        @Override
-        public void startServer(Handler handler) throws Exception
-        {
-            if (handler == context)
-            {
-                // Add this listener before the context is started, so it's durable.
-                context.addEventListener(new ContextHandler.ContextScopeListener()
-                {
-                    @Override
-                    public void enterScope(Context context, Request request, Object reason)
-                    {
-                        checkScope();
-                        scope.set(new RuntimeException());
-                    }
-
-                    @Override
-                    public void exitScope(Context context, Request request)
-                    {
-                        assertScope();
-                        scope.set(null);
-                    }
-                });
-            }
-            super.startServer(handler);
-        }
-
-        private void assertScope()
-        {
-            assertNotNull(scope.get(), "Not in scope");
-        }
-
-        private void checkScope()
-        {
-            RuntimeException callScope = scope.get();
-            if (callScope != null)
-                throw callScope;
-        }
-
-        @Override
-        public void stopServer() throws Exception
-        {
-            checkScope();
-            scope.set(null);
-            super.stopServer();
         }
     }
 }
