@@ -133,7 +133,12 @@ public class Origin
             hashCode(),
             asString(),
             getTag(),
-            getProtocol());
+            tmp());
+    }
+
+    private Protocol tmp()
+    {
+        return getProtocol();
     }
 
     public static class Address
