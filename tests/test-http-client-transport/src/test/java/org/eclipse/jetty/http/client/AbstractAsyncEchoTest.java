@@ -31,19 +31,20 @@ import org.eclipse.jetty.http.HttpMethod;
 import org.eclipse.jetty.http.HttpStatus;
 import org.eclipse.jetty.util.BufferUtil;
 import org.hamcrest.Matchers;
-import org.junit.jupiter.params.ParameterizedTest;
-import org.junit.jupiter.params.provider.ArgumentsSource;
+import org.junit.jupiter.api.Test;
 
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-public class AsyncEchoTest extends AbstractAsyncIOServletTest
+abstract class AbstractAsyncEchoTest extends AbstractAsyncIOServletTest
 {
 
-    @ParameterizedTest
-    @ArgumentsSource(TransportProvider.class)
-    public void testAsyncEcho(Transport transport) throws Exception
+    protected abstract Transport getTransport();
+
+    @Test
+    void testAsyncEcho() throws Exception
     {
+        Transport transport = getTransport();
         init(transport);
         scenario.start(new HttpServlet()
         {

@@ -63,7 +63,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assertions.fail;
 
-public class HttpInputIntegrationTest
+public class HttpInputIntegration2Test
 {
     enum Mode
     {
@@ -264,28 +264,6 @@ public class HttpInputIntegrationTest
                 throw new IllegalStateException();
             }
         }
-    }
-
-    @ParameterizedTest(name = "[{index}] TEST {0}")
-    @MethodSource("scenarios")
-    public void testOne(Scenario scenario) throws Exception
-    {
-        TestClient client = scenario._client.getDeclaredConstructor().newInstance();
-        String response = client.send("/ctx/test?mode=" + scenario._mode, 50, scenario._delay, scenario._length, scenario._send);
-
-        int sum = 0;
-        for (String s : scenario._send)
-        {
-            for (char c : s.toCharArray())
-            {
-                sum += c;
-            }
-        }
-
-        assertTrue(response.startsWith("HTTP"));
-        assertTrue(response.contains(" " + scenario._status + " "));
-        assertTrue(response.contains("read=" + scenario._read));
-        assertTrue(response.contains("sum=" + sum));
     }
 
     @ParameterizedTest(name = "[{index}] STRESS {0}")
